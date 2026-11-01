@@ -1,7 +1,7 @@
 {
   "atomCode": "script",
   "name": "运行脚本",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "用选定的解释器跑一段脚本，支持 sh/bash/bat/powershell/pwsh/python/node/go，退出码即结论。",
   "execution": {
     "packagePath": "script.jar",
@@ -64,11 +64,11 @@
       "type": "string",
       "description": "实际耗时（毫秒）"
     },
-    "interpreter": {
+    "usedInterpreter": {
       "type": "string",
-      "description": "使用的解释器"
+      "description": "使用的解释器（used* 前缀避免与入参同名）"
     },
-    "interpreterPath": {
+    "usedInterpreterPath": {
       "type": "string",
       "description": "解析到的解释器绝对路径"
     },

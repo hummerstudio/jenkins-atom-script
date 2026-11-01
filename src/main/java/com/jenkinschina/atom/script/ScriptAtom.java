@@ -95,8 +95,11 @@ public class ScriptAtom implements AtomTask {
         AtomResult answer = AtomResult.success()
                 .data("exitCode", String.valueOf(result.exitCode()))
                 .data("durationMs", String.valueOf(result.durationMs()))
-                .data("interpreter", interpreter.toolName())
-                .data("interpreterPath", String.valueOf(result.interpreter()))
+                // the names must not collide with the inputs: the runner merges the build environment --
+                // including the previous step's exported outputs -- into the next step's input.json, so an
+                // output called interpreterPath would pin the next script's interpreter to this one's path
+                .data("usedInterpreter", interpreter.toolName())
+                .data("usedInterpreterPath", String.valueOf(result.interpreter()))
                 .data("outputTail", tail);
 
         if (result.timedOut()) {
