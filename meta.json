@@ -1,0 +1,12 @@
+{
+  "name": "运行脚本",
+  "summary": "用 sh / bash / bat / powershell / pwsh / python / node / go 跑一段脚本，退出码即结论。",
+  "author": "hummerstudio",
+  "license": "MIT",
+  "tags": [
+    "official",
+    "generic",
+    "script"
+  ],
+  "homepage": "https://github.com/hummerstudio/jenkins-atom-script"
+}

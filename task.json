@@ -1,0 +1,86 @@
+{
+  "atomCode": "script",
+  "name": "运行脚本",
+  "version": "1.0.0",
+  "description": "用选定的解释器跑一段脚本，支持 sh/bash/bat/powershell/pwsh/python/node/go，退出码即结论。",
+  "execution": {
+    "packagePath": "script.jar",
+    "language": "java",
+    "target": "$atom_java_path -cp script.jar com.jenkinschina.atom.sdk.AtomRunner"
+  },
+  "input": {
+    "interpreter": {
+      "label": "解释器（sh / bash / bat / powershell / pwsh / python / node / go）",
+      "type": "vuex-input",
+      "default": "sh"
+    },
+    "script": {
+      "label": "脚本内容（与脚本文件二选一）",
+      "type": "textarea",
+      "default": ""
+    },
+    "scriptFile": {
+      "label": "脚本文件（相对工作区）",
+      "type": "vuex-input",
+      "default": ""
+    },
+    "interpreterPath": {
+      "label": "解释器绝对路径（venv 的 python、指定版本 node）",
+      "type": "vuex-input",
+      "default": ""
+    },
+    "args": {
+      "label": "参数（一行一个，不解释引号）",
+      "type": "textarea",
+      "default": ""
+    },
+    "env": {
+      "label": "环境变量（KEY=value，一行一个，只作用于本次）",
+      "type": "textarea",
+      "default": ""
+    },
+    "workdir": {
+      "label": "工作目录（相对工作区，留空即工作区根）",
+      "type": "vuex-input",
+      "default": ""
+    },
+    "failOnError": {
+      "label": "非零退出码判失败",
+      "type": "boolean",
+      "default": "true"
+    },
+    "timeoutSeconds": {
+      "label": "超时（秒）",
+      "type": "vuex-input",
+      "default": "1800"
+    }
+  },
+  "output": {
+    "exitCode": {
+      "type": "string",
+      "description": "脚本退出码"
+    },
+    "durationMs": {
+      "type": "string",
+      "description": "实际耗时（毫秒）"
+    },
+    "interpreter": {
+      "type": "string",
+      "description": "使用的解释器"
+    },
+    "interpreterPath": {
+      "type": "string",
+      "description": "解析到的解释器绝对路径"
+    },
+    "outputTail": {
+      "type": "string",
+      "description": "输出末尾（最多 8000 字符）"
+    }
+  },
+  "x-jenkins": {
+    "protocol": "jenkins-1",
+    "requires": {
+      "runner": ">=0.4.0"
+    }
+  }
+}
