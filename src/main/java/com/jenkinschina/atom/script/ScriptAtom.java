@@ -57,6 +57,7 @@ public class ScriptAtom implements AtomTask {
         }
 
         boolean failOnError = context.getBooleanParam("failOnError", true);
+        boolean envFromStdout = context.getBooleanParam("envFromStdout", false);
         int timeoutSeconds = context.getIntParam("timeoutSeconds", 1800);
         Map<String, String> env = parseEnv(context.getParam("env", ""));
         List<String> args = parseArgs(context.getParam("args", ""));
@@ -110,9 +111,91 @@ public class ScriptAtom implements AtomTask {
             return AtomResult.error(ErrorType.USER, 40007, "script exited with " + result.exitCode()
                     + (tail.isEmpty() ? "" : "; last output: " + lastLine(tail)));
         }
+        if (envFromStdout) {
+            // environment-script's contract: whatever the script prints as KEY=VALUE becomes a variable.
+            // The runner exports every output whose name is a legal variable name, so this is the whole bridge.
+            Map<String, String> fromStdout = parseProperties(result.output());
+            int exported = 0;
+            for (Map.Entry<String, String> entry : fromStdout.entrySet()) {
+                String name = entry.getKey();
+                if (RESERVED.contains(name)) {
+                    context.log("[script] stdout variable '" + name + "' skipped: it is an input of this step");
+                    continue;
+                }
+                String value = entry.getValue();
+                if (value.endsWith("+") || name.endsWith("+")) {
+                    continue;   // handled inside parseProperties, should not survive
+                }
+                answer.data(name, value);
+                exported++;
+            }
+            context.log("[script] " + exported + " variable(s) taken from the script output");
+        }
+
         context.log("[script] " + interpreter.toolName() + " exited " + result.exitCode()
                 + " in " + result.durationMs() + " ms" + (failOnError ? "" : " (not failing the build)"));
         return answer;
+    }
+
+    /**
+     * Properties-like parsing of a script's output: {@code KEY=VALUE} or {@code KEY:VALUE}, {@code #}/{@code !}
+     * comments, and the {@code NAME+} append form from environment-script ({@code PATH+/opt/bin} appends to PATH).
+     * Invalid variable names are dropped -- the runner cannot export them anyway.
+     */
+    static Map<String, String> parseProperties(String output) {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (output == null || output.isBlank()) {
+            return values;
+        }
+        for (String raw : output.split("\n")) {
+            String line = raw.trim();
+            if (line.isEmpty() || line.startsWith("#") || line.startsWith("!")) {
+                continue;
+            }
+            // environment-script's append form has no '=' at all: "PATH+/opt/bin" appends to PATH
+            int split = indexOfSeparator(line);
+            boolean append = false;
+            int plus = line.indexOf('+');
+            if (plus > 0 && (split < 0 || plus < split)) {
+                split = plus;
+                append = true;
+            }
+            if (split <= 0) {
+                continue;
+            }
+            String name = line.substring(0, split).trim();
+            String value = line.substring(split + 1).trim();
+            if (!append && name.endsWith("+")) {
+                append = true;
+                name = name.substring(0, name.length() - 1).trim();
+            }
+            if (!name.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+                continue;   // not exportable, so not worth reporting as a variable
+            }
+            if (append) {
+                String base = values.containsKey(name) ? values.get(name) : System.getenv(name);
+                value = (base == null ? "" : base) + value;
+            }
+            values.put(name, value);
+            if (values.size() >= 200) {
+                break;      // a runaway script should not turn into 10k environment variables
+            }
+        }
+        return values;
+    }
+
+    /** The first {@code =} or {@code :} that is part of the separator, not of a URL like {@code http://x}. */
+    private static int indexOfSeparator(String line) {
+        int eq = line.indexOf('=');
+        int colon = line.indexOf(':');
+        if (eq < 0) {
+            return colon;
+        }
+        if (colon < 0) {
+            return eq;
+        }
+        // "KEY: http://x" -- a colon followed by a space is the separator; otherwise prefer '='
+        return colon < eq && line.length() > colon + 1 && line.charAt(colon + 1) == ' ' ? colon : eq;
     }
 
     /** {@code KEY=value} lines (or comma separated); blank lines and {@code #} comments are ignored. */
@@ -147,6 +230,11 @@ public class ScriptAtom implements AtomTask {
         }
         return args;
     }
+
+    /** Names that are inputs of this atom: a script printing them must not shadow the configuration. */
+    private static final java.util.Set<String> RESERVED = java.util.Set.of(
+            "script", "scriptFile", "interpreter", "interpreterPath", "args", "env", "workdir",
+            "failOnError", "timeoutSeconds", "envFromStdout");
 
     private static String lastLine(String text) {
         int index = text.lastIndexOf('\n');

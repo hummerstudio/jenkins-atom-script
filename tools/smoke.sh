@@ -93,4 +93,26 @@ case "$os" in
   *) extra="(bat/powershell skipped: not a Windows host; CI covers them)" ;;
 esac
 
-echo "smoke ok: script/exit code/failOnError/env/args/quoting/unicode/scriptFile/workdir/timeout/bad input$extra"
+# --- 12. envFromStdout: what the script prints becomes variables (environment-script's contract)
+input '{"script": "printf \"FOO=bar\\nDB: postgres\\nPATH+/opt/extra/bin\\n# comment\\nscript=shadow\\n\"", "envFromStdout": "true"}'
+run "$ws" >"$ws/log.txt" 2>&1 || fail "envFromStdout: $(cat "$ws/output.json")"
+grep -q '"FOO":{"type":"string","value":"bar"}' "$ws/output.json" || fail "FOO not exported: $(cat "$ws/output.json")"
+grep -q '"DB":{"type":"string","value":"postgres"}' "$ws/output.json" || fail "KEY: VALUE form not accepted: $(cat "$ws/output.json")"
+python3 - "$ws/output.json" <<'PY' || fail "PATH+ append did not work"
+import json, sys
+doc = json.load(open(sys.argv[1]))
+path = doc["data"]["PATH"]["value"]
+assert path.endswith("/opt/extra/bin"), path
+PY
+grep -q '"script":{"type":"string","value":"shadow"}' "$ws/output.json" && fail "an input name was shadowed by script output"
+
+# ...and off by default: the same script exports nothing
+input '{"script": "printf \"QUIET=1\\n\""}'
+run "$ws" >"$ws/log.txt" 2>&1 || fail "default run: $(cat "$ws/output.json")"
+grep -q '"QUIET"' "$ws/output.json" && fail "envFromStdout must be off by default"
+
+# ...and a script that prints nothing useful is not an error
+input '{"script": "printf \"# only comments\\nnot a variable line\\n\"", "envFromStdout": "true"}'
+run "$ws" >"$ws/log.txt" 2>&1 || fail "a script with no variables must not fail: $(cat "$ws/output.json")"
+
+echo "smoke ok: script/exit code/failOnError/env/args/quoting/unicode/scriptFile/workdir/timeout/bad input/envFromStdout$extra"

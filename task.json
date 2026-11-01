@@ -1,7 +1,7 @@
 {
   "atomCode": "script",
   "name": "运行脚本",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "用选定的解释器跑一段脚本，支持 sh/bash/bat/powershell/pwsh/python/node/go，退出码即结论。",
   "execution": {
     "packagePath": "script.jar",
@@ -53,6 +53,11 @@
       "label": "超时（秒）",
       "type": "vuex-input",
       "default": "1800"
+    },
+    "envFromStdout": {
+      "label": "把脚本输出的 KEY=VALUE 变成环境变量（支持 KEY:VALUE 与 NAME+ 追加）",
+      "type": "boolean",
+      "default": "false"
     }
   },
   "output": {
