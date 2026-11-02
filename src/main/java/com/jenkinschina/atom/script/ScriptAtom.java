@@ -74,9 +74,9 @@ public class ScriptAtom implements AtomTask {
         } else {
             spec.script(text);
         }
-        if (workdir != null) {
-            spec.workdir(workdir);
-        }
+        // 不给 workdir 就在工作区跑：原子自己的目录是解包用的临时区，脚本在那里跑会找不到 src/tests，
+        // 而且产出的报告会落在 .atoms/ 下——这正是 python demo 报 "no tests collected" 的原因。
+        spec.workdir(workdir != null ? workdir : workspace);
 
         Shell.Result result;
         try {
